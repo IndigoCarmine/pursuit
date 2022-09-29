@@ -1,6 +1,4 @@
 #!/usr/bin/python python
-from operator import ne
-import re
 import rospy
 from sensor_msgs.msg import Image, Joy
 import cv2
@@ -16,34 +14,25 @@ class Learner:
         self.test_publisher = rospy.Publisher('image',Image,queue_size=1)
         self.cv_bridge = CvBridge()
         self.counter = 0
+        self.section_counter=0
         self.before_img_descriptor = None
         self.before_img_keypoints = None
         self.bf = cv2.BFMatcher()
         self.akaze = cv2.AKAZE_create()
         self.target_point = [200,200]
         self.islockon = False
+        self.savebuffer = []
         rospy.loginfo("Learner is initialized.")
-        rospy.loginfo(cv2.__version__)
         os.makedirs('data', exist_ok=True)    
 
     def joy_callback(self,data):
         self.target_point += np.floor([-data.axes[0]*3,-data.axes[1]*3]).astype(np.int)
 
-
     def callback(self,data):
         try:
             cv_image = self.cv_bridge.imgmsg_to_cv2(data,"bgr8")
         except CvBridgeError as e:
-            print(e)
-        
-
-        
-        # if cv2.imwrite('data/'+str(self.counter) + '.png',cv_image):
-        #     rospy.loginfo("can save a image.")
-        #     self.counter+=1
-        # else:
-        #     rospy.loginfo("cannot save a image.")     
-
+            print(e) 
         self.bfMatch(cv_image)
         
     def bfMatch(self,next_img):
@@ -82,6 +71,24 @@ class Learner:
                   
         self.before_img_descriptor = descriptor
         self.before_img_keypoints = kp
+    # 未完成です。
+    def save(self,img,point):
+        if self.counter > 999:
+            with open("myfile.csv", mode="a", encoding="utf-8") as f:
+                f.writelines('\n'.join(self.savebuffer))
+            self.savebuffer=[]
+            self.section_counter +=1
+            self.counter = 0 
+        if cv2.imwrite('data/'+str(self.section_counter)+str(self.counter) + '.png',img):
+            rospy.loginfo("can save a image.")
+            self.counter+=1
+            self.savebuffer.append(point)
+        else:
+            rospy.loginfo("cannot save a image.")
+
+
+
+
 
 
 def main():
